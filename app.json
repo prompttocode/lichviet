@@ -1,4 +1,8 @@
 {
   "name": "lichviet",
+  "plugins": [
+    "@notifee/react-native"
+  ],
   "displayName": "lichviet"
+  
 }
