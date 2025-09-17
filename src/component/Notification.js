@@ -52,13 +52,14 @@ export const scheduleNotification = async (seconds, message, options = {}) => {
     const ok = await ensureAndroidNotificationPermission()
     if (!ok) throw new Error('Notification permission not granted')
 
-      console.log('nhạc đang phát');
-      
-    try {
-      await notifee.deleteChannel('default')
-    } catch (e) {
-      // ignore
-    }
+    // console.log('nhạc đang phát'); // optional remove
+
+    // DO NOT delete channel here — deleting channel can cancel scheduled triggers
+    // try {
+    //   await notifee.deleteChannel('default')
+    // } catch (e) {
+    //   // ignore
+    // }
 
     // Nếu dùng sound tuỳ chỉnh, đặt file vào android/app/src/main/res/raw/my_sound.mp3
     // và dùng sound: 'my_sound' (không có .mp3)
@@ -79,6 +80,8 @@ export const scheduleNotification = async (seconds, message, options = {}) => {
     // Huỷ danh sách trước đó nếu cần
     scheduledTriggerIds = []
 
+    const allowOngoing = options.ongoing ?? false // default false để tránh thay thế thông báo
+
     // Đăng ký handler cho action "stop" (chỉ 1 lần)
     if (!handlersRegistered) {
       notifee.onForegroundEvent(({ type, detail }) => {
@@ -93,7 +96,7 @@ export const scheduleNotification = async (seconds, message, options = {}) => {
           }
         })
       } catch (e) {
-        // một số môi trường dev có thể không hỗ trợ onBackgroundEvent ở đây — ignore
+        // ignore - có thể không hỗ trợ onBackgroundEvent
       }
       handlersRegistered = true
     }
@@ -112,37 +115,34 @@ export const scheduleNotification = async (seconds, message, options = {}) => {
       }
 
       // Lên lịch nhiều thông báo lặp lại theo độ dài nhạc
-      const numNotifications = Math.floor(totalDurationSeconds / duration)
-      for (let i = 0; i < numNotifications; i++) {
-        try {
-          const notificationId = await notifee.createTriggerNotification(
-            {
-              title: 'Thông báo',
-              body: message,
-              android: {
-                channelId,
-                sound: 'my_sound',
-                visibility: AndroidVisibility.PUBLIC,
-                fullScreenIntent: true,
-                ongoing: true,
-                pressAction: { id: 'stop' },
-                actions: [
-                  {
-                    title: 'Dừng',
-                    pressAction: { id: 'stop' },
-                  },
-                ],
-              },
+      // Thay vì lên lịch nhiều thông báo chồng nhau, chỉ lên lịch 1 thông báo kiểu "alarm"
+      const idForNotif = `notif-alarm-${Date.now()}`
+      try {
+        const notificationId = await notifee.createTriggerNotification(
+          {
+            id: idForNotif,
+            title: 'Thông báo Nhắc',
+            body: message,
+            android: {
+              channelId,
+              sound: 'my_sound',
+              visibility: AndroidVisibility.PUBLIC,
+              fullScreenIntent: true,
+              ongoing: allowOngoing, // nếu muốn 1 thông báo giữ trên thanh thông báo
+              pressAction: { id: 'stop' },
+              actions: [
+                { title: 'Dừng', pressAction: { id: 'stop' } },
+              ],
             },
-            {
-              type: TriggerType.TIMESTAMP,
-              timestamp: triggerTimestamp + i * duration * 1000,
-            }
-          )
-          if (notificationId) scheduledTriggerIds.push(notificationId)
-        } catch (e) {
-          console.log('Lỗi khi lên lịch thông báo:', e)
-        }
+          },
+          {
+            type: TriggerType.TIMESTAMP,
+            timestamp: triggerTimestamp,
+          }
+        )
+        if (notificationId) scheduledTriggerIds.push(notificationId)
+      } catch (e) {
+        console.log('Lỗi khi lên lịch thông báo:', e)
       }
 
       // KHÔNG play ngay. Thay vào đó, bắt đầu play lúc trigger đầu tiên
