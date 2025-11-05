@@ -4,6 +4,7 @@ on:
   schedule:
     # Chạy 10 lần/ngày (UTC → tương đương 7h, 10h, 13h... VN)
     - cron: '0 0 * * *'
+    - cron: '0 1 * * *' 
     - cron: '0 3 * * *'
     - cron: '0 6 * * *'
     - cron: '0 9 * * *'
