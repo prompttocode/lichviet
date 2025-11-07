@@ -1,19 +1,9 @@
-name: Auto Commit x10 (no storage)
+name: Auto Commit Random (realistic)
 
 on:
   schedule:
-    # Chạy 10 lần/ngày (UTC → tương đương 7h, 10h, 13h... VN)
+    # Chạy 1 lần/ngày (ví dụ 7h sáng VN)
     - cron: '0 0 * * *'
-    - cron: '0 1 * * *' 
-    - cron: '0 3 * * *'
-    - cron: '0 6 * * *'
-    - cron: '0 9 * * *'
-    - cron: '0 12 * * *'
-    - cron: '0 15 * * *'
-    - cron: '0 18 * * *'
-    - cron: '0 21 * * *'
-    - cron: '0 23 * * *'
-    - cron: '30 23 * * *'
   workflow_dispatch:
 
 jobs:
@@ -28,9 +18,22 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create empty commit
+      - name: Create multiple random commits
         run: |
           git config user.name "prompttocode"
           git config user.email "namvu3121@gmail.com"
-          git commit --allow-empty -m "🔥 Keep streak alive $(date +'%Y-%m-%d %H:%M:%S')" || echo "No commit created"
-          git push
+
+          # Random số commit trong ngày (11–15)
+          COUNT=$((11 + RANDOM % 5))
+          echo "🌀 Will create $COUNT commits today"
+
+          for i in $(seq 1 $COUNT)
+          do
+            # random thời gian nghỉ giữa các commit (3–45 phút)
+            DELAY=$((180 + RANDOM % 2700))
+            echo "⏳ Commit $i/$COUNT → waiting $DELAY seconds (~$((DELAY/60)) mins)"
+            sleep $DELAY
+
+            git commit --allow-empty -m "🔥 Keep streak alive #$i $(date +'%Y-%m-%d %H:%M:%S')" || echo "No commit"
+            git push
+          done
